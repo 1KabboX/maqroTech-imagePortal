@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DESIGNER
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum FolderStatus {
+  SUBMITTED
+  DECLINED
+  COMPLETED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  publicId      String?        @unique
+  email         String         @unique
+  name          String?
+  username      String?        @unique
+  passwordHash  String?
+  role          Role           @default(DESIGNER)
+  status        UserStatus     @default(INVITED)
+  registeredAt  DateTime?
+  folders       Folder[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+}
+
+model Brand {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  categories Category[]
+  folders    Folder[]
+  createdAt  DateTime   @default(now())
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brandId   String
+  createdBy String?
+  folders   Folder[]
+  createdAt DateTime @default(now())
+
+  @@unique([brandId, name])
+}
+
+model Folder {
+  id           String        @id @default(cuid())
+  name         String
+  brand        Brand         @relation(fields: [brandId], references: [id])
+  brandId      String
+  category     Category      @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  designer     User          @relation(fields: [designerId], references: [id])
+  designerId   String
+  status       FolderStatus  @default(SUBMITTED)
+  designerNote String?
+  adminNote    String?
+  files        File[]
+  activity     ActivityLog[]
+  declinedAt   DateTime?
+  completedAt  DateTime?
+  submittedAt  DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+}
+
+model File {
+  id          String   @id @default(cuid())
+  folder      Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  folderId    String
+  displayName String
+  filePath    String
+  thumbPath   String
+  sizeBytes   Int
+  width       Int
+  height      Int
+  createdAt   DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  folder    Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  folderId  String
+  actorId   String
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
