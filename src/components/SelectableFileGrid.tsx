@@ -22,7 +22,7 @@ type Props = {
   files: GridFileItem[];
   selected: string[];
   onChange: (ids: string[]) => void;
-  /** Double-click (Drive-style "open"). */
+  /** Plain click while nothing is selected ("open"). */
   onOpen: (file: GridFileItem) => void;
   /** Extra per-file action buttons rendered in the card footer. */
   renderActions?: (file: GridFileItem) => React.ReactNode;
@@ -47,6 +47,8 @@ export function SelectableFileGrid({ files, selected, onChange, onOpen, renderAc
   const anchorRef = useRef<string | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
   const selectedSet = new Set(selected);
+  // Drive-style: no selection → clicks open; any selection → clicks toggle.
+  const selectionMode = selected.length > 0;
 
   const toggle = (id: string) => {
     const next = new Set(selectedSet);
@@ -57,11 +59,7 @@ export function SelectableFileGrid({ files, selected, onChange, onOpen, renderAc
   };
 
   const clickCard = (e: React.MouseEvent, file: GridFileItem) => {
-    if (e.ctrlKey || e.metaKey) {
-      toggle(file.id);
-      return;
-    }
-    if (e.shiftKey && anchorRef.current) {
+    if (e.shiftKey && anchorRef.current && selectionMode) {
       const ids = files.map((f) => f.id);
       const a = ids.indexOf(anchorRef.current);
       const b = ids.indexOf(file.id);
@@ -71,8 +69,21 @@ export function SelectableFileGrid({ files, selected, onChange, onOpen, renderAc
         return;
       }
     }
-    anchorRef.current = file.id;
-    onChange(selectedSet.has(file.id) && selectedSet.size === 1 ? [] : [file.id]);
+    if (e.ctrlKey || e.metaKey || selectionMode) {
+      toggle(file.id);
+      return;
+    }
+    onOpen(file);
+  };
+
+  const contextMenu = (e: React.MouseEvent, file: GridFileItem) => {
+    e.preventDefault();
+    // Right-click starts selection mode; outside the current selection it
+    // selects just that file.
+    if (!selectedSet.has(file.id)) {
+      anchorRef.current = file.id;
+      onChange([file.id]);
+    }
   };
 
   // Marquee (rubber-band) selection on the grid background, Drive-style.
@@ -156,7 +167,7 @@ export function SelectableFileGrid({ files, selected, onChange, onOpen, renderAc
                   else cardRefs.current.delete(file.id);
                 }}
                 onClick={(e) => clickCard(e, file)}
-                onDoubleClick={() => onOpen(file)}
+                onContextMenu={(e) => contextMenu(e, file)}
                 sx={{
                   position: "relative",
                   cursor: "pointer",
@@ -184,7 +195,7 @@ export function SelectableFileGrid({ files, selected, onChange, onOpen, renderAc
                     p: 0.5,
                     bgcolor: "rgba(0,0,0,0.55)",
                     borderRadius: 1,
-                    opacity: isSelected ? 1 : 0,
+                    opacity: isSelected || selectionMode ? 1 : 0,
                     transition: "opacity 0.1s",
                     "&:hover": { bgcolor: "rgba(0,0,0,0.75)" },
                   }}

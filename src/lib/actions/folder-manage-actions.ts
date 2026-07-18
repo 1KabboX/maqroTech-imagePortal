@@ -23,6 +23,7 @@ async function requireEditableFolder(folderId: string) {
 
 function refresh(folderId: string) {
   revalidatePath("/dashboard/folders");
+  revalidatePath("/admin/folders");
   revalidatePath(`/dashboard/folders/${folderId}`);
   revalidatePath(`/admin/folders/${folderId}`);
 }
@@ -31,7 +32,16 @@ export async function renameFolderAction(folderId: string, name: string): Promis
   const parsed = nameSchema.safeParse(name);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const { session, folder } = await requireEditableFolder(folderId);
+  // The admin can rename any folder; designers only their own unlocked ones.
+  const session = await auth();
+  if (!session?.user) return { error: "Not authorized" };
+
+  const folder = await prisma.folder.findUnique({ where: { id: folderId } });
+  if (!folder) return { error: "Folder not found" };
+  if (session.user.role !== "ADMIN") {
+    if (folder.designerId !== session.user.id) return { error: "Folder not found" };
+    if (folder.status === "COMPLETED") return { error: "Folder is locked" };
+  }
   if (folder.name === parsed.data) return;
 
   await prisma.$transaction([

@@ -79,6 +79,32 @@ export async function renameBrandAction(brandId: string, name: string): Promise<
   revalidatePath("/admin/brands");
 }
 
+/** Like category creation, renaming is open to both the admin and designers. */
+export async function renameCategoryAction(
+  categoryId: string,
+  name: string
+): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user) return { error: "Not authorized" };
+
+  const parsed = nameSchema.safeParse(name);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!category) return { error: "Category not found" };
+  if (category.name === parsed.data) return;
+
+  const duplicate = await prisma.category.findUnique({
+    where: { brandId_name: { brandId: category.brandId, name: parsed.data } },
+  });
+  if (duplicate) return { error: "That category already exists in this brand" };
+
+  await prisma.category.update({ where: { id: categoryId }, data: { name: parsed.data } });
+  revalidatePath("/admin/brands");
+  revalidatePath("/admin/folders");
+  revalidatePath("/dashboard/folders");
+}
+
 export async function deleteBrandAction(brandId: string): Promise<ActionResult> {
   await requireAdmin();
 

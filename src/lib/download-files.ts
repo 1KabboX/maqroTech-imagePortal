@@ -1,6 +1,11 @@
 "use client";
 
-export type DownloadEntry = { displayName: string; filePath: string };
+export type DownloadEntry = {
+  displayName: string;
+  filePath: string;
+  /** Optional subfolder path (segments) inside the root download folder. */
+  dir?: string[];
+};
 export type DownloadMessage = { kind: "success" | "error"; text: string };
 export type DownloadProgress = { done: number; total: number };
 
@@ -24,6 +29,26 @@ async function fetchBlob(filePath: string) {
   return res.blob();
 }
 
+async function subdirHandle(
+  root: FileSystemDirectoryHandle,
+  segments: string[],
+  cache: Map<string, FileSystemDirectoryHandle>
+) {
+  let handle = root;
+  let key = "";
+  for (const segment of segments) {
+    key += `/${segment}`;
+    const cached = cache.get(key);
+    if (cached) {
+      handle = cached;
+      continue;
+    }
+    handle = await handle.getDirectoryHandle(sanitize(segment), { create: true });
+    cache.set(key, handle);
+  }
+  return handle;
+}
+
 /**
  * Saves the given files into a folder on the user's device — directly via the
  * File System Access API where available, otherwise as a zip download.
@@ -45,9 +70,13 @@ export async function downloadFilesToDevice(
     }
     try {
       const target = await root.getDirectoryHandle(sanitize(folderName), { create: true });
+      const dirCache = new Map<string, FileSystemDirectoryHandle>();
       for (let i = 0; i < files.length; i++) {
         const blob = await fetchBlob(files[i].filePath);
-        const handle = await target.getFileHandle(
+        const parent = files[i].dir?.length
+          ? await subdirHandle(target, files[i].dir!, dirCache)
+          : target;
+        const handle = await parent.getFileHandle(
           sanitize(finalName(files[i].displayName, files[i].filePath)),
           { create: true }
         );
@@ -68,7 +97,9 @@ export async function downloadFilesToDevice(
     const dir = zip.folder(sanitize(folderName))!;
     for (let i = 0; i < files.length; i++) {
       const blob = await fetchBlob(files[i].filePath);
-      dir.file(sanitize(finalName(files[i].displayName, files[i].filePath)), blob);
+      let parent = dir;
+      for (const segment of files[i].dir ?? []) parent = parent.folder(sanitize(segment))!;
+      parent.file(sanitize(finalName(files[i].displayName, files[i].filePath)), blob);
       onProgress({ done: i + 1, total: files.length });
     }
     const out = await zip.generateAsync({ type: "blob" });

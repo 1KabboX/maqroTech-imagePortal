@@ -1,0 +1,35 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/maqroTech-imagePortal
+            
+            # Pull latest code
+            git pull origin main
+            
+            # Install dependencies
+            npm ci
+            
+            # Run database migrations (if any)
+            npx prisma migrate deploy
+            
+            # Build for production
+            npm run build
+            
+            # Restart server with PM2
+            pm2 restart maqro-portal

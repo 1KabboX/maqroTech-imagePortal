@@ -3,14 +3,13 @@ import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { prisma } from "@/lib/prisma";
 import { FolderStatusChip } from "@/components/FolderStatusChip";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { DownloadFolderButton } from "@/components/DownloadFolderButton";
+import { BackButton } from "@/components/BackButton";
 import { FolderReview } from "./FolderReview";
 
 export default async function AdminFolderPage({
@@ -34,9 +33,7 @@ export default async function AdminFolderPage({
 
   return (
     <Stack spacing={3}>
-      <Button href="/admin/folders" startIcon={<ArrowBackIcon />} sx={{ alignSelf: "flex-start" }}>
-        All folders
-      </Button>
+      <BackButton label="All folders" />
 
       <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
         <Typography variant="h4">{folder.name}</Typography>

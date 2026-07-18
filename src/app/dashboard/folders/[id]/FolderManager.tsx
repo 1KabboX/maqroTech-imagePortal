@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -187,53 +188,6 @@ export function FolderManager({ folderId, folderName, status, files }: Props) {
         </Box>
       )}
 
-      {selected.length > 0 && (
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 1,
-            pl: 2,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            flexWrap: "wrap",
-            borderColor: "primary.main",
-            position: "sticky",
-            top: 8,
-            zIndex: 3,
-          }}
-        >
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {selected.length} selected
-          </Typography>
-          <DownloadFolderButton
-            folderName={folderName}
-            files={selectedFiles.map((f) => ({ displayName: f.displayName, filePath: f.filePath }))}
-            label="Download selected"
-            variant="contained"
-            size="small"
-          />
-          {editable && (
-            <Button
-              size="small"
-              color="error"
-              variant="outlined"
-              disabled={pending}
-              startIcon={<DeleteOutlinedIcon />}
-              onClick={() => setDeletingSelected(true)}
-            >
-              Delete selected
-            </Button>
-          )}
-          <Button size="small" onClick={() => setSelected(files.map((f) => f.id))}>
-            Select all
-          </Button>
-          <IconButton size="small" aria-label="Clear selection" onClick={() => setSelected([])}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Paper>
-      )}
-
       <SelectableFileGrid
         files={files}
         selected={selected}
@@ -267,10 +221,78 @@ export function FolderManager({ folderId, folderName, status, files }: Props) {
             : undefined
         }
       />
+
+      {selected.length > 0 && typeof document !== "undefined" && createPortal(
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 28,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1300,
+            animation: "slideUp 0.2s ease",
+            "@keyframes slideUp": {
+              from: { opacity: 0, transform: "translateX(-50%) translateY(12px)" },
+              to: { opacity: 1, transform: "translateX(-50%) translateY(0)" },
+            },
+          }}
+        >
+          <Paper
+            elevation={12}
+            sx={{
+              p: 1,
+              pl: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              flexWrap: "nowrap",
+              border: "1px solid",
+              borderColor: "primary.main",
+              borderRadius: 99,
+              backdropFilter: "blur(12px)",
+              bgcolor: "background.paper",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {selected.length} selected
+            </Typography>
+            <DownloadFolderButton
+              folderName={folderName}
+              files={selectedFiles.map((f) => ({ displayName: f.displayName, filePath: f.filePath }))}
+              label="Download selected"
+              variant="contained"
+              size="small"
+            />
+            {editable && (
+              <Button
+                size="small"
+                color="error"
+                variant="outlined"
+                disabled={pending}
+                startIcon={<DeleteOutlinedIcon />}
+                onClick={() => setDeletingSelected(true)}
+              >
+                Delete selected
+              </Button>
+            )}
+            <Button size="small" onClick={() => setSelected(files.map((f) => f.id))}>
+              Select all
+            </Button>
+            <IconButton size="small" aria-label="Clear selection" onClick={() => setSelected([])}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Paper>
+        </Box>,
+        document.body
+      )}
+
       {files.length > 0 && (
         <Typography variant="caption" color="text.secondary">
-          Click to select · Ctrl-click for more · Shift-click for a range · drag on empty space to
-          box-select · double-click to open
+          {selected.length > 0
+            ? "Click to select or deselect · Shift-click for a range · deselect everything to go back to opening on click"
+            : "Click to open · right-click or tick a checkbox to start selecting · drag on empty space to box-select"}
         </Typography>
       )}
 

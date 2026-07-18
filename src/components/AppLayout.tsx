@@ -206,7 +206,8 @@ export function AppLayout({ name, role, publicId, unreadCount = 0, children }: P
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           mt: "64px",
           display: "flex",
-          flexDirection: "column"
+          flexDirection: "column",
+          pb: "96px",
         }}
       >
         {children}

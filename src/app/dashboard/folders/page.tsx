@@ -1,48 +1,15 @@
 import { notFound } from "next/navigation";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
-import Grid from "@mui/material/Grid";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
-import Box from "@mui/material/Box";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import MuiLink from "@mui/material/Link";
-import FolderIcon from "@mui/icons-material/Folder";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { FolderStatusChip } from "@/components/FolderStatusChip";
 import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
 import { FolderUploadDialog } from "@/components/FolderUploadDialog";
 import { DropUploader } from "@/components/DropUploader";
-
-function DriveTile({
-  href,
-  name,
-  meta,
-}: {
-  href: string;
-  name: string;
-  meta: string;
-}) {
-  return (
-    <Card>
-      <CardActionArea href={href} sx={{ p: 2 }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <FolderIcon sx={{ fontSize: 36, color: "#8ab4f8" }} />
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600 }}>
-              {name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {meta}
-            </Typography>
-          </Box>
-        </Stack>
-      </CardActionArea>
-    </Card>
-  );
-}
+import { SelectableTileGrid } from "@/components/SelectableTileGrid";
 
 function PageHeader({
   crumbs,
@@ -127,33 +94,17 @@ export default async function FoldersPage({
           </Typography>
         )}
 
-        <Grid container spacing={2}>
-          {folders.map((f) => (
-            <Grid key={f.id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <Card>
-                <CardActionArea href={`/dashboard/folders/${f.id}`} sx={{ p: 2 }}>
-                  <Stack spacing={1.5}>
-                    <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
-                      <FolderIcon sx={{ fontSize: 36, color: "#8ab4f8" }} />
-                      <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600 }}>
-                        {f.name}
-                      </Typography>
-                    </Stack>
-                    <Stack
-                      direction="row"
-                      sx={{ alignItems: "center", justifyContent: "space-between" }}
-                    >
-                      <FolderStatusChip status={f.status} />
-                      <Typography variant="caption" color="text.secondary">
-                        {f._count.files} file{f._count.files === 1 ? "" : "s"}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </CardActionArea>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <SelectableTileGrid
+          key={`folders:${brandId}:${categoryId}`}
+          kind="folder"
+          items={folders.map((f) => ({
+            id: f.id,
+            name: f.name,
+            href: `/dashboard/folders/${f.id}`,
+            status: f.status,
+            footer: `${f._count.files} file${f._count.files === 1 ? "" : "s"}`,
+          }))}
+        />
       </Stack>
     );
   }
@@ -194,20 +145,19 @@ export default async function FoldersPage({
           </Typography>
         )}
 
-        <Grid container spacing={2}>
-          {categories.map((c) => {
+        <SelectableTileGrid
+          key={`categories:${brandId}`}
+          kind="category"
+          items={categories.map((c) => {
             const count = countByCategory.get(c.id) ?? 0;
-            return (
-              <Grid key={c.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                <DriveTile
-                  href={`/dashboard/folders?brand=${brandId}&category=${c.id}`}
-                  name={c.name}
-                  meta={`${count} folder${count === 1 ? "" : "s"} from you`}
-                />
-              </Grid>
-            );
+            return {
+              id: c.id,
+              name: c.name,
+              href: `/dashboard/folders?brand=${brandId}&category=${c.id}`,
+              caption: `${count} folder${count === 1 ? "" : "s"} from you`,
+            };
           })}
-        </Grid>
+        />
       </Stack>
     );
   }
@@ -232,20 +182,19 @@ export default async function FoldersPage({
         </Typography>
       )}
 
-      <Grid container spacing={2}>
-        {brands.map((b) => {
+      <SelectableTileGrid
+        key="brands"
+        kind="brand"
+        items={brands.map((b) => {
           const mine = folderCountByBrand.get(b.id) ?? 0;
-          return (
-            <Grid key={b.id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <DriveTile
-                href={`/dashboard/folders?brand=${b.id}`}
-                name={b.name}
-                meta={`${b._count.categories} categor${b._count.categories === 1 ? "y" : "ies"} · ${mine} folder${mine === 1 ? "" : "s"} from you`}
-              />
-            </Grid>
-          );
+          return {
+            id: b.id,
+            name: b.name,
+            href: `/dashboard/folders?brand=${b.id}`,
+            caption: `${b._count.categories} categor${b._count.categories === 1 ? "y" : "ies"} · ${mine} folder${mine === 1 ? "" : "s"} from you`,
+          };
         })}
-      </Grid>
+      />
     </Stack>
   );
 }
