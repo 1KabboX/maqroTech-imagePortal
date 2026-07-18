@@ -40,7 +40,6 @@ Thumbs.db
 # Prisma & Databases
 *.db
 *.db-journal
-*.sql
 *.bak
 *.dump
 
