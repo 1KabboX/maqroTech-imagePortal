@@ -12,10 +12,13 @@ const nameSchema = z.string().trim().min(1, "Enter a name").max(120);
 
 async function requireEditableFolder(folderId: string) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "DESIGNER") throw new Error("Not authorized");
+  if (!session?.user) throw new Error("Not authorized");
 
   const folder = await prisma.folder.findUnique({ where: { id: folderId } });
-  if (!folder || folder.designerId !== session.user.id) throw new Error("Folder not found");
+  if (!folder) throw new Error("Folder not found");
+  if (session.user.role !== "ADMIN" && folder.designerId !== session.user.id) {
+    throw new Error("Folder not found");
+  }
   if (folder.status === "COMPLETED") throw new Error("Folder is locked");
 
   return { session, folder };

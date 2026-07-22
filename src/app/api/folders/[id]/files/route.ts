@@ -14,7 +14,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     where: { id },
     include: { _count: { select: { files: true } } },
   });
-  if (!folder || folder.designerId !== session.user.id) {
+  const isAdmin = session.user.role === "ADMIN";
+  if (!folder || (!isAdmin && folder.designerId !== session.user.id)) {
     return NextResponse.json({ error: "Folder not found" }, { status: 404 });
   }
   if (folder.status === "COMPLETED") {
