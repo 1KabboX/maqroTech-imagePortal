@@ -6,6 +6,7 @@ import Alert from "@mui/material/Alert";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import { prisma } from "@/lib/prisma";
+import { signFilePath } from "@/lib/file-token";
 import { FolderStatusChip } from "@/components/FolderStatusChip";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { DownloadFolderButton } from "@/components/DownloadFolderButton";
@@ -78,6 +79,7 @@ export default async function AdminFolderPage({
           sizeBytes: f.sizeBytes,
           width: f.width,
           height: f.height,
+          shareToken: signFilePath(f.filePath),
         }))}
       />
 

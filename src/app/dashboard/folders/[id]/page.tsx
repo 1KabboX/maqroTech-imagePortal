@@ -9,6 +9,7 @@ import CardContent from "@mui/material/CardContent";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { signFilePath } from "@/lib/file-token";
 import { FolderStatusChip } from "@/components/FolderStatusChip";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { FolderManager } from "./FolderManager";
@@ -78,6 +79,7 @@ export default async function FolderDetailPage({
           sizeBytes: f.sizeBytes,
           width: f.width,
           height: f.height,
+          shareToken: signFilePath(f.filePath),
         }))}
       />
 
