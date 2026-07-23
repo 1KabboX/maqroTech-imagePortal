@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { resolveStoragePath } from "@/lib/storage";
 import { verifyFileToken } from "@/lib/file-token";
+import { canViewFolder } from "@/lib/visibility";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -64,13 +64,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
     const session = await auth();
     if (!session?.user) return withCors(new NextResponse("Unauthorized", { status: 401 }), origin);
 
-    // Path shape: {brandId}/{folderId}/... — designers may only see their own folders
+    // Path shape: {brandId}/{folderId}/... — designers may see their own folders
+    // plus any the admin has shared with them.
     if (session.user.role !== "ADMIN") {
       const folderId = segments[1];
-      const folder = folderId
-        ? await prisma.folder.findUnique({ where: { id: folderId }, select: { designerId: true } })
-        : null;
-      if (!folder || folder.designerId !== session.user.id) {
+      if (!folderId || !(await canViewFolder(session.user.id, folderId))) {
         return withCors(new NextResponse("Forbidden", { status: 403 }), origin);
       }
     }

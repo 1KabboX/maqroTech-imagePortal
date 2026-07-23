@@ -40,7 +40,7 @@ import {
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SelectableFileGrid, type GridFileItem } from "@/components/SelectableFileGrid";
 import { DownloadFolderButton } from "@/components/DownloadFolderButton";
-import { collectFiles, filterImages } from "@/lib/collect-files";
+import { collectFiles, filterImages, uploadImagesToFolder } from "@/lib/collect-files";
 
 type FileItem = GridFileItem;
 
@@ -93,19 +93,9 @@ export function FolderReview({ folderId, folderName, status, files }: Props) {
     setError(skipped > 0 ? `${skipped} file${skipped === 1 ? "" : "s"} skipped (not an image)` : null);
     setUploading({ done: 0, total: valid.length });
     try {
-      for (let i = 0; i < valid.length; i++) {
-        const fd = new FormData();
-        fd.append("file", valid[i]);
-        const res = await fetch(`/api/folders/${folderId}/files`, {
-          method: "POST",
-          body: fd,
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to upload ${valid[i].name}`);
-        }
-        setUploading({ done: i + 1, total: valid.length });
-      }
+      await uploadImagesToFolder(folderId, valid, {
+        onProgress: (done, total) => setUploading({ done, total }),
+      });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");

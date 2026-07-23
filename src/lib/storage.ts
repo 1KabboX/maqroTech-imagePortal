@@ -7,10 +7,6 @@ const STORAGE_ROOT = path.resolve(process.env.STORAGE_PATH ?? "./storage/uploads
 
 export const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
-export function storageRoot() {
-  return STORAGE_ROOT;
-}
-
 /** Resolves a DB-stored relative path to an absolute path, refusing traversal outside the root. */
 export function resolveStoragePath(relativePath: string): string | null {
   const abs = path.resolve(STORAGE_ROOT, relativePath);

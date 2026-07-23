@@ -6,6 +6,7 @@ import MuiLink from "@mui/material/Link";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { visibleFolderFilter } from "@/lib/visibility";
 import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
 import { CreateFolderDialog } from "@/components/CreateFolderDialog";
 import { FolderUploadDialog } from "@/components/FolderUploadDialog";
@@ -59,7 +60,10 @@ export default async function FoldersPage({
   const designerId = session!.user.id;
   const { brand: brandId, category: categoryId } = await searchParams;
 
-  // Level 3 — the designer's folders inside a brand/category, plus upload
+  // Everything the designer may see: their own folders plus any the admin shared.
+  const visible = await visibleFolderFilter(designerId);
+
+  // Level 3 — the folders the designer can see inside a brand/category, plus upload
   if (brandId && categoryId) {
     const category = await prisma.category.findUnique({
       where: { id: categoryId },
@@ -68,7 +72,7 @@ export default async function FoldersPage({
     if (!category || category.brand.id !== brandId) notFound();
 
     const folders = await prisma.folder.findMany({
-      where: { designerId, brandId, categoryId },
+      where: { AND: [visible, { brandId, categoryId }] },
       orderBy: [{ status: "asc" }, { submittedAt: "desc" }],
       include: {
         _count: { select: { files: true } },
@@ -99,8 +103,7 @@ export default async function FoldersPage({
 
         {folders.length === 0 && (
           <Typography variant="body2" color="text.secondary">
-            No folders from you in this category yet — drag one in from your computer, or use
-            the Upload button.
+            No folders here yet — drag one in from your computer, or use the Upload button.
           </Typography>
         )}
 
@@ -113,6 +116,7 @@ export default async function FoldersPage({
             href: `/dashboard/folders/${f.id}`,
             status: f.status,
             footer: `${f._count.files} file${f._count.files === 1 ? "" : "s"}`,
+            owned: f.designerId === designerId,
           }))}
         />
       </Stack>
@@ -121,7 +125,7 @@ export default async function FoldersPage({
 
   const grouped = await prisma.folder.groupBy({
     by: ["brandId", "categoryId"],
-    where: { designerId },
+    where: visible,
     _count: { _all: true },
   });
 
@@ -164,7 +168,7 @@ export default async function FoldersPage({
               id: c.id,
               name: c.name,
               href: `/dashboard/folders?brand=${brandId}&category=${c.id}`,
-              caption: `${count} folder${count === 1 ? "" : "s"} from you`,
+              caption: `${count} folder${count === 1 ? "" : "s"}`,
             };
           })}
         />
@@ -196,12 +200,12 @@ export default async function FoldersPage({
         key="brands"
         kind="brand"
         items={brands.map((b) => {
-          const mine = folderCountByBrand.get(b.id) ?? 0;
+          const visibleCount = folderCountByBrand.get(b.id) ?? 0;
           return {
             id: b.id,
             name: b.name,
             href: `/dashboard/folders?brand=${b.id}`,
-            caption: `${b._count.categories} categor${b._count.categories === 1 ? "y" : "ies"} · ${mine} folder${mine === 1 ? "" : "s"} from you`,
+            caption: `${b._count.categories} categor${b._count.categories === 1 ? "y" : "ies"} · ${visibleCount} folder${visibleCount === 1 ? "" : "s"}`,
           };
         })}
       />

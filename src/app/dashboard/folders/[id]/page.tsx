@@ -9,6 +9,7 @@ import CardContent from "@mui/material/CardContent";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { canViewFolder } from "@/lib/visibility";
 import { signFilePath } from "@/lib/file-token";
 import { FolderStatusChip } from "@/components/FolderStatusChip";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
@@ -21,6 +22,7 @@ export default async function FolderDetailPage({
 }) {
   const { id } = await params;
   const session = await auth();
+  const userId = session!.user.id;
 
   const folder = await prisma.folder.findUnique({
     where: { id },
@@ -31,17 +33,21 @@ export default async function FolderDetailPage({
       activity: { orderBy: { createdAt: "desc" } },
     },
   });
-  if (!folder || folder.designerId !== session!.user.id) notFound();
+  if (!folder || !(await canViewFolder(userId, id))) notFound();
+
+  // Folders shared by the admin are view-only and stay anonymous — the viewing
+  // designer never sees who owns them, their notes, or their activity trail.
+  const isOwner = folder.designerId === userId;
 
   return (
     <Stack spacing={3}>
       <Button href="/dashboard/folders" startIcon={<ArrowBackIcon />} sx={{ alignSelf: "flex-start" }}>
-        My folders
+        Folders
       </Button>
 
       <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
         <Typography variant="h4">{folder.name}</Typography>
-        <FolderStatusChip status={folder.status} size="medium" />
+        {isOwner && <FolderStatusChip status={folder.status} size="medium" />}
       </Stack>
 
       <Stack direction="row" spacing={1}>
@@ -50,18 +56,18 @@ export default async function FolderDetailPage({
         <Chip label={`${folder.files.length} files`} variant="outlined" />
       </Stack>
 
-      {folder.status === "DECLINED" && folder.adminNote && (
+      {isOwner && folder.status === "DECLINED" && folder.adminNote && (
         <Alert severity="error">
           <strong>Admin note:</strong> {folder.adminNote}
         </Alert>
       )}
-      {folder.status === "COMPLETED" && (
+      {isOwner && folder.status === "COMPLETED" && (
         <Alert severity="success">
           This folder is completed and locked — the files are in use. Contact the admin if
           something needs to change.
         </Alert>
       )}
-      {folder.designerNote && (
+      {isOwner && folder.designerNote && (
         <Alert severity="info">
           <strong>Your note:</strong> {folder.designerNote}
         </Alert>
@@ -71,6 +77,7 @@ export default async function FolderDetailPage({
         folderId={folder.id}
         folderName={folder.name}
         status={folder.status}
+        canEdit={isOwner}
         files={folder.files.map((f) => ({
           id: f.id,
           displayName: f.displayName,
@@ -83,14 +90,16 @@ export default async function FolderDetailPage({
         }))}
       />
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Activity
-          </Typography>
-          <ActivityTimeline items={folder.activity} />
-        </CardContent>
-      </Card>
+      {isOwner && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Activity
+            </Typography>
+            <ActivityTimeline items={folder.activity} />
+          </CardContent>
+        </Card>
+      )}
     </Stack>
   );
 }

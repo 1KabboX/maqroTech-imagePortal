@@ -21,7 +21,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import FolderIcon from "@mui/icons-material/Folder";
 import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
-import { collectFiles, filterImages } from "@/lib/collect-files";
+import { collectFiles, filterImages, uploadImagesToFolder } from "@/lib/collect-files";
 
 type Props = {
   brandId: string;
@@ -61,19 +61,11 @@ export function DropUploader({ brandId, categoryName }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't create the folder");
 
-      for (let i = 0; i < files.length; i++) {
-        const fd = new FormData();
-        fd.append("file", files[i]);
-        const up = await fetch(`/api/folders/${data.id}/files?initial=1`, {
-          method: "POST",
-          body: fd,
-        });
-        if (!up.ok) {
-          const body = await up.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to upload ${files[i].name}`);
-        }
-        setUpload({ phase: "uploading", folderName, done: i + 1, total: files.length });
-      }
+      await uploadImagesToFolder(data.id, files, {
+        initial: true,
+        onProgress: (done, total) =>
+          setUpload({ phase: "uploading", folderName, done, total }),
+      });
       setUpload({ phase: "done", folderName, total: files.length });
       router.refresh();
     } catch (err) {

@@ -17,6 +17,7 @@ import {
   deleteDesignerAction,
 } from "@/lib/actions/designer-actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DesignerVisibilityDialog } from "@/components/DesignerVisibilityDialog";
 
 type Designer = {
   id: string;
@@ -39,6 +40,7 @@ export function DesignerRow({ designer }: { designer: Designer }) {
   const [pending, startTransition] = useTransition();
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
   const chip = statusChip[designer.status];
   const disable = designer.status !== "DISABLED";
 
@@ -62,6 +64,11 @@ export function DesignerRow({ designer }: { designer: Designer }) {
         <Chip label={chip.label} color={chip.color} size="small" />
       </TableCell>
       <TableCell align="right">
+        {designer.status !== "INVITED" && (
+          <Button size="small" onClick={() => setVisibilityOpen(true)}>
+            Visibility
+          </Button>
+        )}
         <Button
           size="small"
           disabled={pending}
@@ -115,6 +122,13 @@ export function DesignerRow({ designer }: { designer: Designer }) {
             startTransition(() => deleteDesignerAction(designer.id).then(() => {}));
           }}
           onClose={() => setConfirmingDelete(false)}
+        />
+
+        <DesignerVisibilityDialog
+          designerId={designer.id}
+          designerLabel={designer.name ?? designer.email}
+          open={visibilityOpen}
+          onClose={() => setVisibilityOpen(false)}
         />
 
         <Dialog open={Boolean(tempPassword)} onClose={() => setTempPassword(null)}>

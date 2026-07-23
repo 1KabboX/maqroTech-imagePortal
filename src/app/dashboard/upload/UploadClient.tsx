@@ -16,44 +16,12 @@ import LinearProgress from "@mui/material/LinearProgress";
 import Chip from "@mui/material/Chip";
 import DriveFolderUploadOutlinedIcon from "@mui/icons-material/DriveFolderUploadOutlined";
 import InsertPhotoOutlinedIcon from "@mui/icons-material/InsertPhotoOutlined";
+import { collectFiles, filterImages, uploadImagesToFolder } from "@/lib/collect-files";
 
 type Brand = { id: string; name: string };
 type CategoryOption = { name: string; isNew?: boolean };
 
-const ALLOWED = [".jpg", ".jpeg", ".png", ".webp"];
-
 const filter = createFilterOptions<CategoryOption>();
-
-function extOf(name: string) {
-  const i = name.lastIndexOf(".");
-  return i === -1 ? "" : name.slice(i).toLowerCase();
-}
-
-async function readAllEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
-  const all: FileSystemEntry[] = [];
-  for (;;) {
-    const batch = await new Promise<FileSystemEntry[]>((res, rej) =>
-      reader.readEntries(res, rej)
-    );
-    if (batch.length === 0) return all;
-    all.push(...batch);
-  }
-}
-
-async function collectFiles(entry: FileSystemEntry): Promise<File[]> {
-  if (entry.isFile) {
-    const file = await new Promise<File>((res, rej) =>
-      (entry as FileSystemFileEntry).file(res, rej)
-    );
-    return [file];
-  }
-  if (entry.isDirectory) {
-    const entries = await readAllEntries((entry as FileSystemDirectoryEntry).createReader());
-    const nested = await Promise.all(entries.map(collectFiles));
-    return nested.flat();
-  }
-  return [];
-}
 
 export function UploadClient({ brands }: { brands: Brand[] }) {
   const router = useRouter();
@@ -84,12 +52,7 @@ export function UploadClient({ brands }: { brands: Brand[] }) {
   }, [brandId]);
 
   const acceptFiles = (incoming: File[], detectedFolderName?: string) => {
-    const valid: File[] = [];
-    let skippedCount = 0;
-    for (const f of incoming) {
-      if (!ALLOWED.includes(extOf(f.name))) skippedCount++;
-      else valid.push(f);
-    }
+    const { valid, skipped: skippedCount } = filterImages(incoming);
     setFiles(valid);
     setSkipped(skippedCount);
     setError(valid.length === 0 ? "No usable images found (JPG, PNG, WEBP)" : null);
@@ -138,19 +101,10 @@ export function UploadClient({ brands }: { brands: Brand[] }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't create the folder");
 
-      for (let i = 0; i < files.length; i++) {
-        const fd = new FormData();
-        fd.append("file", files[i]);
-        const up = await fetch(`/api/folders/${data.id}/files?initial=1`, {
-          method: "POST",
-          body: fd,
-        });
-        if (!up.ok) {
-          const body = await up.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to upload ${files[i].name}`);
-        }
-        setProgress({ done: i + 1, total: files.length });
-      }
+      await uploadImagesToFolder(data.id, files, {
+        initial: true,
+        onProgress: (done, total) => setProgress({ done, total }),
+      });
 
       router.push(`/dashboard/folders/${data.id}`);
     } catch (err) {

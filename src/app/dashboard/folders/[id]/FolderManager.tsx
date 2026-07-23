@@ -34,6 +34,7 @@ import {
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SelectableFileGrid, type GridFileItem } from "@/components/SelectableFileGrid";
 import { DownloadFolderButton } from "@/components/DownloadFolderButton";
+import { filterImages, uploadImagesToFolder } from "@/lib/collect-files";
 
 type FileItem = GridFileItem;
 
@@ -42,13 +43,13 @@ type Props = {
   folderName: string;
   status: "SUBMITTED" | "DECLINED" | "COMPLETED";
   files: FileItem[];
+  /** False for folders shared with the designer by the admin — view + download only. */
+  canEdit?: boolean;
 };
 
-const ALLOWED = [".jpg", ".jpeg", ".png", ".webp"];
-
-export function FolderManager({ folderId, folderName, status, files }: Props) {
+export function FolderManager({ folderId, folderName, status, files, canEdit = true }: Props) {
   const router = useRouter();
-  const editable = status !== "COMPLETED";
+  const editable = canEdit && status !== "COMPLETED";
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [renamingFolder, setRenamingFolder] = useState(false);
@@ -76,9 +77,7 @@ export function FolderManager({ folderId, folderName, status, files }: Props) {
     });
 
   const addFiles = async (picked: File[]) => {
-    const valid = picked.filter((f) =>
-      ALLOWED.includes(f.name.slice(f.name.lastIndexOf(".")).toLowerCase())
-    );
+    const { valid } = filterImages(picked);
     if (valid.length === 0) {
       setError("Only JPG, PNG, and WEBP images can be added");
       return;
@@ -86,19 +85,9 @@ export function FolderManager({ folderId, folderName, status, files }: Props) {
     setError(null);
     setUploading({ done: 0, total: valid.length });
     try {
-      for (let i = 0; i < valid.length; i++) {
-        const fd = new FormData();
-        fd.append("file", valid[i]);
-        const res = await fetch(`/api/folders/${folderId}/files`, {
-          method: "POST",
-          body: fd,
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to upload ${valid[i].name}`);
-        }
-        setUploading({ done: i + 1, total: valid.length });
-      }
+      await uploadImagesToFolder(folderId, valid, {
+        onProgress: (done, total) => setUploading({ done, total }),
+      });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");

@@ -48,6 +48,8 @@ export type TileItem = {
   status?: "SUBMITTED" | "DECLINED" | "COMPLETED";
   /** Right side of the footer row, e.g. "12 files". */
   footer?: string;
+  /** For folder tiles: whether the viewer owns it. Non-owned folders can't be renamed. */
+  owned?: boolean;
 };
 
 type Props = {
@@ -113,6 +115,10 @@ export function SelectableTileGrid({ items, kind }: Props) {
   const hasContextMenu = kind !== "brand";
   // Drive-style: no selection → clicks open; any selection → clicks toggle.
   const selectionMode = selected.length > 0;
+  // Folders a designer doesn't own can be viewed/downloaded but not renamed.
+  const singleSelected = selected.length === 1 ? items.find((i) => i.id === selected[0]) : null;
+  const canRenameSelected =
+    Boolean(singleSelected) && (kind !== "folder" || singleSelected!.owned !== false);
 
   const toggle = (id: string) => {
     const next = new Set(selectedSet);
@@ -398,7 +404,7 @@ export function SelectableTileGrid({ items, kind }: Props) {
             >
               Download
             </Button>
-            {hasContextMenu && selected.length === 1 && (
+            {hasContextMenu && canRenameSelected && (
               <Button
                 size="small"
                 variant="outlined"
@@ -434,7 +440,7 @@ export function SelectableTileGrid({ items, kind }: Props) {
             Download{selected.length > 1 ? ` (${selected.length})` : ""}
           </ListItemText>
         </MenuItem>
-        <MenuItem disabled={selected.length !== 1 || pending} onClick={openRename}>
+        <MenuItem disabled={!canRenameSelected || pending} onClick={openRename}>
           <ListItemIcon>
             <DriveFileRenameOutlineOutlinedIcon fontSize="small" />
           </ListItemIcon>

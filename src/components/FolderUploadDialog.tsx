@@ -17,7 +17,7 @@ import Chip from "@mui/material/Chip";
 import DriveFolderUploadOutlinedIcon from "@mui/icons-material/DriveFolderUploadOutlined";
 import InsertPhotoOutlinedIcon from "@mui/icons-material/InsertPhotoOutlined";
 
-import { collectFiles, filterImages } from "@/lib/collect-files";
+import { collectFiles, filterImages, uploadImagesToFolder } from "@/lib/collect-files";
 
 type Props = {
   brandId: string;
@@ -96,19 +96,10 @@ export function FolderUploadDialog({ brandId, categoryName, detailPathPrefix }: 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't create the folder");
 
-      for (let i = 0; i < files.length; i++) {
-        const fd = new FormData();
-        fd.append("file", files[i]);
-        const up = await fetch(`/api/folders/${data.id}/files?initial=1`, {
-          method: "POST",
-          body: fd,
-        });
-        if (!up.ok) {
-          const body = await up.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to upload ${files[i].name}`);
-        }
-        setProgress({ done: i + 1, total: files.length });
-      }
+      await uploadImagesToFolder(data.id, files, {
+        initial: true,
+        onProgress: (done, total) => setProgress({ done, total }),
+      });
 
       setOpen(false);
       reset();

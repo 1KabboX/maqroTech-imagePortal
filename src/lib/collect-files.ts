@@ -45,3 +45,25 @@ export function filterImages(incoming: File[]): { valid: File[]; skipped: number
   }
   return { valid, skipped };
 }
+
+/** Uploads images to a folder one at a time, reporting progress; throws on the first failure. */
+export async function uploadImagesToFolder(
+  folderId: string,
+  files: File[],
+  opts: { initial?: boolean; onProgress?: (done: number, total: number) => void } = {}
+): Promise<void> {
+  const query = opts.initial ? "?initial=1" : "";
+  for (let i = 0; i < files.length; i++) {
+    const fd = new FormData();
+    fd.append("file", files[i]);
+    const res = await fetch(`/api/folders/${folderId}/files${query}`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `Failed to upload ${files[i].name}`);
+    }
+    opts.onProgress?.(i + 1, files.length);
+  }
+}

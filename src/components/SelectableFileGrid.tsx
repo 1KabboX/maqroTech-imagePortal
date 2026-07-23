@@ -160,7 +160,6 @@ export function SelectableFileGrid({ files, selected, onChange, onOpen, renderAc
       const file = files.find((f) => f.id === id);
       if (file) prefetchFile(file);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, files]);
 
   const dragStart = (e: React.DragEvent, file: GridFileItem) => {

@@ -25,18 +25,21 @@ enum FolderStatus {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  publicId      String?        @unique
-  email         String         @unique
-  name          String?
-  username      String?        @unique
-  passwordHash  String?
-  role          Role           @default(DESIGNER)
-  status        UserStatus     @default(INVITED)
-  registeredAt  DateTime?
-  folders       Folder[]
-  notifications Notification[]
-  createdAt     DateTime       @default(now())
+  id             String         @id @default(cuid())
+  publicId       String?        @unique
+  email          String         @unique
+  name           String?
+  username       String?        @unique
+  passwordHash   String?
+  role           Role           @default(DESIGNER)
+  status         UserStatus     @default(INVITED)
+  registeredAt   DateTime?
+  // When true, this designer can view every folder in the system (set by admin).
+  seesAllFolders Boolean        @default(false)
+  folders        Folder[]
+  sharedFolders  FolderShare[]
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
 }
 
 model Brand {
@@ -73,10 +76,24 @@ model Folder {
   adminNote    String?
   files        File[]
   activity     ActivityLog[]
+  shares       FolderShare[]
   declinedAt   DateTime?
   completedAt  DateTime?
   submittedAt  DateTime      @default(now())
   createdAt    DateTime      @default(now())
+}
+
+// Admin-granted visibility: designer `designerId` may view folder `folderId`.
+model FolderShare {
+  id         String   @id @default(cuid())
+  folder     Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  folderId   String
+  designer   User     @relation(fields: [designerId], references: [id], onDelete: Cascade)
+  designerId String
+  createdAt  DateTime @default(now())
+
+  @@unique([folderId, designerId])
+  @@index([designerId])
 }
 
 model File {
