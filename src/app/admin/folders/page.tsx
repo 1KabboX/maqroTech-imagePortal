@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import type { FolderStatus, Prisma } from "@prisma/client";
 import { CreateBrandDialog } from "@/components/CreateBrandDialog";
 import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
+import { CreateFolderDialog } from "@/components/CreateFolderDialog";
 import { FolderUploadDialog } from "@/components/FolderUploadDialog";
 import { DropUploader } from "@/components/DropUploader";
 import { SelectableTileGrid } from "@/components/SelectableTileGrid";
@@ -146,7 +147,14 @@ export default async function AdminFoldersPage({
         </Breadcrumbs>
         <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
           <Typography variant="h4">{category.name}</Typography>
-          <FolderUploadDialog brandId={brandId} categoryName={category.name} />
+          <Stack direction="row" spacing={1}>
+            <CreateFolderDialog
+              brandId={brandId}
+              categoryName={category.name}
+              detailPathPrefix="/admin/folders"
+            />
+            <FolderUploadDialog brandId={brandId} categoryName={category.name} />
+          </Stack>
         </Stack>
         <DropUploader brandId={brandId} categoryName={category.name} />
 

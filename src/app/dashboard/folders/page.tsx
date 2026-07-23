@@ -7,6 +7,7 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
+import { CreateFolderDialog } from "@/components/CreateFolderDialog";
 import { FolderUploadDialog } from "@/components/FolderUploadDialog";
 import { DropUploader } from "@/components/DropUploader";
 import { SelectableTileGrid } from "@/components/SelectableTileGrid";
@@ -83,7 +84,16 @@ export default async function FoldersPage({
             { label: category.name },
           ]}
           title={category.name}
-          action={<FolderUploadDialog brandId={brandId} categoryName={category.name} />}
+          action={
+            <Stack direction="row" spacing={1}>
+              <CreateFolderDialog
+                brandId={brandId}
+                categoryName={category.name}
+                detailPathPrefix="/dashboard/folders"
+              />
+              <FolderUploadDialog brandId={brandId} categoryName={category.name} />
+            </Stack>
+          }
         />
         <DropUploader brandId={brandId} categoryName={category.name} />
 
